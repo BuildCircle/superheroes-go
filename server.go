@@ -1,44 +1,53 @@
 package main
 
 import (
-	"github.com/labstack/echo/v4"
 	"net/http"
-	"superheroes-go/characters"
+	provider "superheroes-go/internal/characters"
+	"superheroes-go/internal/scorer"
+	"superheroes-go/internal/validator"
+
+	"github.com/labstack/echo/v4"
 )
 
-type Character = characters.Character
+type JsonResponse struct {
+	Status  int
+	Message string
+}
 
 func main() {
 	e := echo.New()
-	var heroChar Character
-	var villainChar Character
-	
-	e.GET("/battle", func(c echo.Context) error {
 
+	e.GET("/battle", func(c echo.Context) error {
 		hero := c.QueryParam("hero")
 		villain := c.QueryParam("villain")
 
-		characters, err := characters.GetCharacters()
+		if hero == "" || villain == "" {
+			jsonResponse := JsonResponse{
+				Status:  http.StatusBadRequest,
+				Message: "Missing one or more arguments",
+			}
+			return c.JSON(http.StatusBadRequest, jsonResponse)
+		}
+
+		heroChar, villainChar, err := provider.GetCharacters(hero, villain)
 
 		if err != nil {
 			e.Logger.Fatal(err)
 			return c.NoContent(http.StatusInternalServerError)
 		}
 
-		for _, item := range characters.Items {
-			if item.Name == hero {
-				heroChar = item
+		validCharacters := validator.ValidCombatantCharacters(heroChar, villainChar)
+		if !validCharacters {
+			jsonResponse := JsonResponse{
+				Status:  http.StatusUnprocessableEntity,
+				Message: "Characters must be of the correct type",
 			}
-			if item.Name == villain {
-				villainChar = item
-			}
+			return c.JSON(http.StatusUnprocessableEntity, jsonResponse)
 		}
 
-		if heroChar.Score > villainChar.Score {
-			return c.JSON(http.StatusOK, heroChar)
-		}
+		winner := scorer.WinnerCalculator(heroChar, villainChar)
 
-		return c.JSON(http.StatusOK, villainChar)
+		return c.JSON(http.StatusOK, winner)
 	})
 	e.Logger.Fatal(e.Start(":1323"))
 }
