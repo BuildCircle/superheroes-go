@@ -24,7 +24,7 @@ Superheroes can only fight supervillains and vice versa. Add some validation to 
 
 ## Acceptance tests
 
-Run the application.
+Run the application with `go run .` (requires Go 1.27+). It listens on http://localhost:8080.
 
 1. Should return Joker - http://localhost:8080/battle?hero=Batman&villain=Joker
 2. Should return Superman - http://localhost:8080/battle?hero=Superman&villain=Lex%20Luthor
